@@ -1,0 +1,15 @@
+{% extends "stars/base.html" %}
+{% block title %}Star Tracker{% endblock %}
+{% block content %}
+<div class="kid-grid">
+  {% for kid in kids %}
+  <a class="kid-card" href="{% url 'stars:kid_detail' kid.id %}">
+    <span class="star">⭐</span>
+    <span class="name">{{ kid.name }}</span>
+    <span class="balance">{{ kid.balance }} star{{ kid.balance|pluralize }}</span>
+  </a>
+  {% empty %}
+  <p class="empty">No kids yet. Add some in the admin.</p>
+  {% endfor %}
+</div>
+{% endblock %}

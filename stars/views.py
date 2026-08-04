@@ -1,0 +1,62 @@
+from django.contrib import messages
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
+
+from .models import Kid, QuickAction, StarTransaction
+
+
+def kid_list(request):
+    kids = Kid.objects.all()
+    return render(request, "stars/kid_list.html", {"kids": kids})
+
+
+def kid_detail(request, kid_id):
+    kid = get_object_or_404(Kid, pk=kid_id)
+    transactions = kid.transactions.all()
+    quick_actions = QuickAction.objects.all()
+    return render(
+        request,
+        "stars/kid_detail.html",
+        {
+            "kid": kid,
+            "transactions": transactions,
+            "quick_actions": quick_actions,
+        },
+    )
+
+
+@require_POST
+def add_stars(request, kid_id):
+    kid = get_object_or_404(Kid, pk=kid_id)
+    direction = request.POST.get("direction", "add")
+    reason = request.POST.get("reason", "").strip()
+
+    try:
+        amount = int(request.POST.get("amount", "").strip())
+    except (TypeError, ValueError):
+        messages.error(request, "Please enter a whole number of stars.")
+        return redirect("stars:kid_detail", kid_id=kid.id)
+
+    if amount <= 0:
+        messages.error(request, "Amount must be a positive number.")
+        return redirect("stars:kid_detail", kid_id=kid.id)
+
+    delta = amount if direction == "add" else -amount
+    StarTransaction.objects.create(kid=kid, delta=delta, reason=reason)
+    return redirect("stars:kid_detail", kid_id=kid.id)
+
+
+@require_POST
+def quick_action(request, kid_id, action_id):
+    kid = get_object_or_404(Kid, pk=kid_id)
+    action = get_object_or_404(QuickAction, pk=action_id)
+    StarTransaction.objects.create(kid=kid, delta=action.delta, reason=action.label)
+    return redirect("stars:kid_detail", kid_id=kid.id)
+
+
+@require_POST
+def delete_transaction(request, kid_id, txn_id):
+    kid = get_object_or_404(Kid, pk=kid_id)
+    txn = get_object_or_404(StarTransaction, pk=txn_id, kid=kid)
+    txn.delete()
+    return redirect("stars:kid_detail", kid_id=kid.id)

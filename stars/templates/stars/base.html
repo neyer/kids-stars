@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Star Tracker{% endblock %}</title>
+<style>
+  :root {
+    --gold: #f5a623;
+    --gold-dark: #d1860a;
+    --green: #3fae5a;
+    --red: #d9534f;
+    --bg: #fdf6e9;
+    --card: #ffffff;
+    --ink: #3a2f22;
+    --muted: #8a7c65;
+    --border: #eee0c4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+  a { color: inherit; text-decoration: none; }
+  header {
+    padding: 1.5rem 1.5rem 1rem;
+    text-align: center;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+  }
+  header h1 a { display: inline-flex; align-items: center; gap: 0.5rem; }
+  main {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 0 1rem 3rem;
+  }
+  .kid-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+  .kid-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+  .kid-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.08);
+  }
+  .kid-card .star {
+    font-size: 2.2rem;
+    display: block;
+    margin-bottom: 0.4rem;
+  }
+  .kid-card .name {
+    font-size: 1.2rem;
+    font-weight: 600;
+  }
+  .kid-card .balance {
+    color: var(--gold-dark);
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-top: 0.3rem;
+  }
+  .back-link {
+    display: inline-block;
+    margin-bottom: 1rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .balance-banner {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.2rem;
+    text-align: center;
+    margin-bottom: 1.2rem;
+  }
+  .balance-banner .big-balance {
+    font-size: 2.6rem;
+    font-weight: 800;
+    color: var(--gold-dark);
+  }
+  .balance-banner .big-balance .star { font-size: 2rem; }
+  .quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.2rem;
+  }
+  .quick-btn {
+    border: none;
+    border-radius: 999px;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    color: white;
+    font-weight: 600;
+  }
+  .quick-btn.pos { background: var(--green); }
+  .quick-btn.neg { background: var(--red); }
+  .quick-btn:hover { filter: brightness(1.08); }
+  .manual-form {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .manual-form .row {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .manual-form input[type="number"] {
+    width: 80px;
+    padding: 0.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 1rem;
+  }
+  .manual-form input[type="text"] {
+    flex: 1;
+    min-width: 140px;
+    padding: 0.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 1rem;
+  }
+  .manual-form select {
+    padding: 0.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 1rem;
+  }
+  .btn {
+    border: none;
+    border-radius: 8px;
+    padding: 0.55rem 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: white;
+    background: var(--gold-dark);
+  }
+  .btn:hover { filter: brightness(1.05); }
+  ul.ledger {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  ul.ledger li {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.7rem 1rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .ledger .delta {
+    font-weight: 700;
+    min-width: 3.5rem;
+    text-align: right;
+  }
+  .ledger .delta.pos { color: var(--green); }
+  .ledger .delta.neg { color: var(--red); }
+  .ledger .meta {
+    flex: 1;
+    padding: 0 0.7rem;
+  }
+  .ledger .reason { display: block; }
+  .ledger .timestamp {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .ledger form { margin: 0; }
+  .delete-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0.2rem 0.4rem;
+  }
+  .delete-btn:hover { color: var(--red); }
+  .empty {
+    text-align: center;
+    color: var(--muted);
+    padding: 2rem 0;
+  }
+  .messages {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1rem;
+  }
+  .messages li {
+    background: #fbe1e0;
+    color: var(--red);
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 0.4rem;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1><a href="{% url 'stars:kid_list' %}">⭐ Star Tracker</a></h1>
+</header>
+<main>
+  {% if messages %}
+  <ul class="messages">
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>
