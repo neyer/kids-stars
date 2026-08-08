@@ -8,6 +8,7 @@
   <div>{{ kid.name }}'s stars</div>
 </div>
 
+{% if user.is_authenticated %}
 {% if quick_actions %}
 <div class="quick-actions">
   {% for action in quick_actions %}
@@ -33,6 +34,9 @@
     <button type="submit" class="btn">Save</button>
   </div>
 </form>
+{% else %}
+<p class="empty"><a href="{% url 'stars:login' %}?next={{ request.path }}">Log in</a> to add or remove stars.</p>
+{% endif %}
 
 <h3>Ledger</h3>
 {% if transactions %}
@@ -46,11 +50,13 @@
       <span class="reason">{{ txn.reason|default:"—" }}</span>
       <span class="timestamp">{{ txn.created_at|date:"M j, Y g:i A" }}</span>
     </span>
+    {% if user.is_authenticated %}
     <form action="{% url 'stars:delete_transaction' kid.id txn.id %}" method="post"
           onsubmit="return confirm('Delete this entry?');">
       {% csrf_token %}
       <button type="submit" class="delete-btn" title="Delete entry">✕</button>
     </form>
+    {% endif %}
   </li>
   {% endfor %}
 </ul>

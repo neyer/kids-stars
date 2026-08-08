@@ -120,6 +120,10 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+LOGIN_URL = 'stars:login'
+LOGIN_REDIRECT_URL = 'stars:kid_list'
+LOGOUT_REDIRECT_URL = 'stars:kid_list'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 

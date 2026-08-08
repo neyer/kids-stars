@@ -1,3 +1,4 @@
+from django.contrib.auth import views as auth_views
 from django.urls import path
 
 from . import views
@@ -10,4 +11,6 @@ urlpatterns = [
     path("kid/<int:kid_id>/add/", views.add_stars, name="add_stars"),
     path("kid/<int:kid_id>/quick/<int:action_id>/", views.quick_action, name="quick_action"),
     path("kid/<int:kid_id>/delete/<int:txn_id>/", views.delete_transaction, name="delete_transaction"),
+    path("login/", auth_views.LoginView.as_view(template_name="stars/login.html"), name="login"),
+    path("logout/", auth_views.LogoutView.as_view(), name="logout"),
 ]

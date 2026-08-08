@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
@@ -25,6 +26,7 @@ def kid_detail(request, kid_id):
     )
 
 
+@login_required
 @require_POST
 def add_stars(request, kid_id):
     kid = get_object_or_404(Kid, pk=kid_id)
@@ -46,6 +48,7 @@ def add_stars(request, kid_id):
     return redirect("stars:kid_detail", kid_id=kid.id)
 
 
+@login_required
 @require_POST
 def quick_action(request, kid_id, action_id):
     kid = get_object_or_404(Kid, pk=kid_id)
@@ -54,6 +57,7 @@ def quick_action(request, kid_id, action_id):
     return redirect("stars:kid_detail", kid_id=kid.id)
 
 
+@login_required
 @require_POST
 def delete_transaction(request, kid_id, txn_id):
     kid = get_object_or_404(Kid, pk=kid_id)

@@ -216,11 +216,42 @@
     border-radius: 8px;
     margin-bottom: 0.4rem;
   }
+  .auth-bar {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .auth-bar a { text-decoration: underline; }
+  .auth-bar form { margin: 0; }
+  .link-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--muted);
+    text-decoration: underline;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
 </style>
 </head>
 <body>
 <header>
   <h1><a href="{% url 'stars:kid_list' %}">⭐ Star Tracker</a></h1>
+  <div class="auth-bar">
+    {% if user.is_authenticated %}
+      <span>{{ user.username }}</span>
+      <form action="{% url 'stars:logout' %}" method="post">
+        {% csrf_token %}
+        <button type="submit" class="link-btn">Log out</button>
+      </form>
+    {% else %}
+      <a href="{% url 'stars:login' %}?next={{ request.path }}">Log in</a>
+    {% endif %}
+  </div>
 </header>
 <main>
   {% if messages %}

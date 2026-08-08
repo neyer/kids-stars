@@ -1,0 +1,18 @@
+{% extends "stars/base.html" %}
+{% block title %}Log in · Star Tracker{% endblock %}
+{% block content %}
+<div class="manual-form">
+  <form method="post">
+    {% csrf_token %}
+    {% if form.errors %}
+    <p class="empty" style="color: var(--red);">Incorrect username or password.</p>
+    {% endif %}
+    <div class="row" style="flex-direction: column; align-items: stretch;">
+      <input type="text" name="username" placeholder="Username" autofocus required>
+      <input type="password" name="password" placeholder="Password" required>
+      <input type="hidden" name="next" value="{{ next }}">
+      <button type="submit" class="btn">Log in</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
