@@ -1,0 +1,14 @@
+[Unit]
+Description=Kids Stars Django Application
+After=network.target
+
+[Service]
+User=mark
+Group=mark
+WorkingDirectory=/home/mark/src/kids-stars
+ExecStart=/home/mark/venvs/personal/bin/gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
