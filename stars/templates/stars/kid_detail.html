@@ -3,8 +3,14 @@
 {% block content %}
 <a class="back-link" href="{% url 'stars:kid_list' %}">&larr; All kids</a>
 
-<div class="balance-banner">
-  <div class="big-balance"><span class="star">⭐</span> {{ kid.balance }}</div>
+<div class="balance-banner" id="balance-banner"
+     data-celebrate="{{ celebrate }}"
+     data-balance-before="{{ balance_before }}"
+     data-balance-after="{{ kid.balance }}">
+  <div class="big-balance" id="balance-big">
+    <span class="star" id="balance-star">⭐</span>
+    <span id="balance-number">{{ kid.balance }}</span>
+  </div>
   <div>{{ kid.name }}'s stars</div>
 </div>
 
@@ -63,4 +69,117 @@
 {% else %}
 <p class="empty">No stars yet. Add the first one above!</p>
 {% endif %}
+
+<script>
+(function () {
+  var banner = document.getElementById("balance-banner");
+  var numberEl = document.getElementById("balance-number");
+  if (!banner || !numberEl) return;
+
+  var celebrate = parseInt(banner.dataset.celebrate || "0", 10) || 0;
+  var before = parseInt(banner.dataset.balanceBefore || "0", 10) || 0;
+  var after = parseInt(banner.dataset.balanceAfter || "0", 10) || 0;
+
+  if (!celebrate) {
+    return;
+  }
+
+  if (window.history && window.history.replaceState) {
+    window.history.replaceState(null, "", window.location.pathname);
+  }
+
+  animateCount(numberEl, before, after, 900);
+  bumpAndTwinkle();
+  spawnBurst(banner, Math.max(10, Math.min(8 + celebrate * 2, 24)));
+  playCelebrationSound();
+
+  function animateCount(el, from, to, duration) {
+    var start = null;
+    function step(ts) {
+      if (start === null) start = ts;
+      var progress = Math.min((ts - start) / duration, 1);
+      var eased = 1 - Math.pow(1 - progress, 3);
+      el.textContent = Math.round(from + (to - from) * eased);
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      } else {
+        el.textContent = to;
+      }
+    }
+    requestAnimationFrame(step);
+  }
+
+  function bumpAndTwinkle() {
+    var big = document.getElementById("balance-big");
+    var star = document.getElementById("balance-star");
+    if (big) {
+      big.classList.add("bump");
+      setTimeout(function () { big.classList.remove("bump"); }, 400);
+    }
+    if (star) {
+      star.classList.add("twinkle");
+      setTimeout(function () { star.classList.remove("twinkle"); }, 850);
+    }
+  }
+
+  function spawnBurst(container, count) {
+    var emojis = ["⭐", "✨", "🌟", "💫"];
+    for (var i = 0; i < count; i++) {
+      (function (i) {
+        setTimeout(function () {
+          var angle = (Math.PI * 2 * i) / count + (Math.random() * 0.5 - 0.25);
+          var distance = 55 + Math.random() * 85;
+          var dx = Math.cos(angle) * distance;
+          var dy = Math.sin(angle) * distance * 0.85;
+
+          var p = document.createElement("span");
+          p.className = "star-particle";
+          p.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+          p.style.fontSize = (0.9 + Math.random() * 1.1).toFixed(2) + "rem";
+          p.style.setProperty("--dx", dx.toFixed(1) + "px");
+          p.style.setProperty("--dy", dy.toFixed(1) + "px");
+          p.style.setProperty("--rot", (Math.round(Math.random() * 360 - 180)) + "deg");
+          p.style.setProperty("--end-scale", (0.6 + Math.random() * 0.7).toFixed(2));
+          container.appendChild(p);
+          setTimeout(function () { p.remove(); }, 1150);
+        }, i * 25);
+      })(i);
+    }
+  }
+
+  function playCelebrationSound() {
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      var ctx = new Ctx();
+      var now = ctx.currentTime;
+
+      function tone(freq, startTime, dur, type, gainPeak) {
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, startTime);
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(gainPeak, startTime + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + dur);
+      }
+
+      tone(1568, now, 0.09, "square", 0.15);
+      tone(2093, now + 0.09, 0.18, "square", 0.15);
+
+      var sparkleNotes = [2093, 2637, 3136, 3520];
+      sparkleNotes.forEach(function (freq, i) {
+        tone(freq, now + 0.22 + i * 0.07, 0.15, "sine", 0.07);
+      });
+
+      setTimeout(function () { ctx.close(); }, 1200);
+    } catch (e) {
+      /* Web Audio unavailable; skip sound. */
+    }
+  }
+})();
+</script>
 {% endblock %}
