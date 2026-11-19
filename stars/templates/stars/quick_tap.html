@@ -1,0 +1,158 @@
+{% extends "stars/base.html" %}
+{% block title %}Quick tap · Star Tracker{% endblock %}
+{% block content %}
+<style>
+  .tap-list { display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem; }
+  .tap-row {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    position: relative;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  }
+  .tap-row .who { flex: 1; min-width: 0; }
+  .tap-row .name { font-size: 1.3rem; font-weight: 700; display: block; }
+  .tap-row .balance { color: var(--gold-dark); font-weight: 800; font-size: 1.6rem; }
+  .tap-row .balance .star { display: inline-block; }
+  .tap-row .balance .star.twinkle { animation: star-twinkle 0.8s ease; }
+  .tap-row .chunk {
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-left: 0.4rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .tap-row .chunk.show { opacity: 1; }
+  .tap-row .chunk.pos { color: var(--green); }
+  .tap-row .chunk.neg { color: var(--red); }
+  .tap-btn {
+    border: none;
+    border-radius: 16px;
+    width: 4.5rem;
+    height: 4.5rem;
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: white;
+    cursor: pointer;
+    touch-action: manipulation; /* no double-tap zoom on phones */
+    user-select: none;
+    -webkit-user-select: none;
+    transition: transform 0.05s;
+  }
+  .tap-btn:active { transform: scale(0.92); }
+  .tap-btn.minus { background: var(--red); }
+  .tap-btn.plus { background: var(--green); }
+  .tap-hint { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 1rem; }
+  .tap-error { color: var(--red); text-align: center; min-height: 1.2em; }
+</style>
+
+<a class="back-link" href="{% url 'stars:kid_list' %}">&larr; All kids</a>
+<div class="tap-error" id="tap-error"></div>
+
+<div class="tap-list">
+  {% for kid in kids %}
+  <div class="tap-row" data-kid="{{ kid.id }}" data-url="{% url 'stars:tap' kid.id %}">
+    <button type="button" class="tap-btn minus" data-dir="remove" aria-label="Remove a star from {{ kid.name }}">−</button>
+    <div class="who">
+      <a class="name" href="{% url 'stars:kid_detail' kid.id %}">{{ kid.name }}</a>
+      <span class="balance"><span class="star">⭐</span> <span class="num">{{ kid.balance }}</span></span>
+      <span class="chunk"></span>
+    </div>
+    <button type="button" class="tap-btn plus" data-dir="add" aria-label="Add a star to {{ kid.name }}">+</button>
+  </div>
+  {% empty %}
+  <p class="empty">No kids yet. Add some in the admin.</p>
+  {% endfor %}
+</div>
+<p class="tap-hint">Taps within a minute of each other are saved as one entry.</p>
+
+<script>
+(function () {
+  var csrf = "{{ csrf_token }}";
+  var errorEl = document.getElementById("tap-error");
+  // Send taps one at a time so they reach the server in order.
+  var queue = Promise.resolve();
+  var pending = {}; // kid id -> taps not yet confirmed by the server
+
+  document.querySelectorAll(".tap-row").forEach(function (row) {
+    var kid = row.dataset.kid;
+    var numEl = row.querySelector(".num");
+    var starEl = row.querySelector(".star");
+    var chunkEl = row.querySelector(".chunk");
+    pending[kid] = 0;
+
+    row.querySelectorAll(".tap-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var dir = btn.dataset.dir;
+        var step = dir === "add" ? 1 : -1;
+
+        // Optimistic update so the number moves instantly.
+        pending[kid] += step;
+        numEl.textContent = parseInt(numEl.textContent, 10) + step;
+        if (step > 0) {
+          window.playTwinkle();
+          starEl.classList.remove("twinkle");
+          void starEl.offsetWidth; // restart animation
+          starEl.classList.add("twinkle");
+          burst(row);
+        }
+
+        queue = queue.then(function () {
+          var body = new URLSearchParams({ direction: dir });
+          return fetch(row.dataset.url, {
+            method: "POST",
+            headers: { "X-CSRFToken": csrf },
+            body: body,
+            credentials: "same-origin",
+          }).then(function (resp) {
+            if (!resp.ok || !(resp.headers.get("content-type") || "").includes("json")) {
+              throw new Error("bad response");
+            }
+            return resp.json();
+          }).then(function (data) {
+            pending[kid] -= step;
+            errorEl.textContent = "";
+            numEl.textContent = data.balance + pending[kid];
+            showChunk(chunkEl, data.chunk);
+          }).catch(function () {
+            pending[kid] -= step;
+            numEl.textContent = parseInt(numEl.textContent, 10) - step;
+            errorEl.textContent = "Couldn't save that tap — are you still logged in? Try reloading.";
+          });
+        });
+      });
+    });
+  });
+
+  function showChunk(el, chunk) {
+    el.classList.remove("pos", "neg", "show");
+    if (!chunk) { el.textContent = ""; return; }
+    el.textContent = "(" + (chunk > 0 ? "+" : "") + chunk + ")";
+    el.classList.add(chunk > 0 ? "pos" : "neg", "show");
+  }
+
+  function burst(container) {
+    var emojis = ["⭐", "✨", "🌟", "💫"];
+    var count = 8;
+    for (var i = 0; i < count; i++) {
+      var angle = (Math.PI * 2 * i) / count + (Math.random() * 0.5 - 0.25);
+      var distance = 40 + Math.random() * 50;
+      var p = document.createElement("span");
+      p.className = "star-particle";
+      p.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      p.style.fontSize = (0.8 + Math.random() * 0.8).toFixed(2) + "rem";
+      p.style.setProperty("--dx", (Math.cos(angle) * distance).toFixed(1) + "px");
+      p.style.setProperty("--dy", (Math.sin(angle) * distance * 0.7).toFixed(1) + "px");
+      p.style.setProperty("--rot", (Math.round(Math.random() * 360 - 180)) + "deg");
+      p.style.setProperty("--end-scale", (0.6 + Math.random() * 0.6).toFixed(2));
+      container.appendChild(p);
+      setTimeout((function (p) { return function () { p.remove(); }; })(p), 1150);
+    }
+  }
+})();
+</script>
+{% endblock %}

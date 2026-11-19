@@ -38,6 +38,9 @@ class StarTransaction(models.Model):
     delta = models.IntegerField()
     reason = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    # Bumped each time a quick-tap merges into this entry; used to decide
+    # whether the next tap continues the same chunk.
+    updated_at = models.DateTimeField(auto_now=True, null=True)
 
     class Meta:
         ordering = ["-created_at", "-id"]

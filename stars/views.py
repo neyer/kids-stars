@@ -1,7 +1,12 @@
 from django.contrib import messages
+from datetime import timedelta
+
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .models import Kid, QuickAction, StarTransaction
@@ -81,3 +86,49 @@ def delete_transaction(request, kid_id, txn_id):
     txn = get_object_or_404(StarTransaction, pk=txn_id, kid=kid)
     txn.delete()
     return redirect("stars:kid_detail", kid_id=kid.id)
+
+
+# Taps on the quick-tap page within this window of the previous tap are merged
+# into a single ledger entry.
+TAP_CHUNK_WINDOW = timedelta(seconds=60)
+
+
+@login_required
+def quick_tap(request):
+    return render(request, "stars/quick_tap.html", {"kids": Kid.objects.all()})
+
+
+@login_required
+@require_POST
+def tap(request, kid_id):
+    """Add or remove one star, merging into the kid's latest entry if that
+    entry is a blank-reason entry touched within TAP_CHUNK_WINDOW."""
+    kid = get_object_or_404(Kid, pk=kid_id)
+    step = 1 if request.POST.get("direction", "add") == "add" else -1
+
+    with transaction.atomic():
+        latest = (
+            StarTransaction.objects.select_for_update()
+            .filter(kid=kid)
+            .order_by("-created_at", "-id")
+            .first()
+        )
+        cutoff = timezone.now() - TAP_CHUNK_WINDOW
+        if (
+            latest is not None
+            and latest.reason == ""
+            and (latest.updated_at or latest.created_at) >= cutoff
+        ):
+            latest.delta += step
+            if latest.delta == 0:
+                # Taps cancelled out (e.g. +1 then -1); drop the empty entry.
+                latest.delete()
+                chunk = 0
+            else:
+                latest.save(update_fields=["delta", "updated_at"])
+                chunk = latest.delta
+        else:
+            StarTransaction.objects.create(kid=kid, delta=step, reason="")
+            chunk = step
+
+    return JsonResponse({"kid": kid.id, "balance": kid.balance, "chunk": chunk})

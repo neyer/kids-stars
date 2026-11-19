@@ -91,7 +91,7 @@
   animateCount(numberEl, before, after, 900);
   bumpAndTwinkle();
   spawnBurst(banner, Math.max(10, Math.min(8 + celebrate * 2, 24)));
-  playCelebrationSound();
+  window.playTwinkle();
 
   function animateCount(el, from, to, duration) {
     var start = null;
@@ -147,39 +147,6 @@
     }
   }
 
-  function playCelebrationSound() {
-    try {
-      var Ctx = window.AudioContext || window.webkitAudioContext;
-      var ctx = new Ctx();
-      var now = ctx.currentTime;
-
-      function tone(freq, startTime, dur, type, gainPeak) {
-        var osc = ctx.createOscillator();
-        var gain = ctx.createGain();
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, startTime);
-        gain.gain.setValueAtTime(0, startTime);
-        gain.gain.linearRampToValueAtTime(gainPeak, startTime + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(startTime);
-        osc.stop(startTime + dur);
-      }
-
-      tone(1568, now, 0.09, "square", 0.15);
-      tone(2093, now + 0.09, 0.18, "square", 0.15);
-
-      var sparkleNotes = [2093, 2637, 3136, 3520];
-      sparkleNotes.forEach(function (freq, i) {
-        tone(freq, now + 0.22 + i * 0.07, 0.15, "sine", 0.07);
-      });
-
-      setTimeout(function () { ctx.close(); }, 1200);
-    } catch (e) {
-      /* Web Audio unavailable; skip sound. */
-    }
-  }
 })();
 </script>
 {% endblock %}

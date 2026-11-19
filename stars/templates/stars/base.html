@@ -278,12 +278,52 @@
     cursor: pointer;
   }
 </style>
+<script>
+/* Shared twinkle sound. One AudioContext is reused so rapid taps work. */
+window.playTwinkle = (function () {
+  var ctx = null;
+  return function () {
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!ctx) ctx = new Ctx();
+      if (ctx.state === "suspended") ctx.resume();
+      var now = ctx.currentTime;
+
+      function tone(freq, startTime, dur, type, gainPeak) {
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, startTime);
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(gainPeak, startTime + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + dur);
+      }
+
+      tone(1568, now, 0.09, "square", 0.15);
+      tone(2093, now + 0.09, 0.18, "square", 0.15);
+
+      var sparkleNotes = [2093, 2637, 3136, 3520];
+      sparkleNotes.forEach(function (freq, i) {
+        tone(freq, now + 0.22 + i * 0.07, 0.15, "sine", 0.07);
+      });
+    } catch (e) {
+      /* Web Audio unavailable; skip sound. */
+    }
+  };
+})();
+</script>
 </head>
 <body>
 <header>
   <h1><a href="{% url 'stars:kid_list' %}">⭐ Star Tracker</a></h1>
   <div class="auth-bar">
     {% if user.is_authenticated %}
+      <a href="{% url 'stars:quick_tap' %}">Quick tap</a>
+      <span>·</span>
       <span>{{ user.username }}</span>
       <form action="{% url 'stars:logout' %}" method="post">
         {% csrf_token %}
