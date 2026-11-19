@@ -15,8 +15,10 @@ class QuickTapTests(TestCase):
         self.kid = Kid.objects.get(name="Allie")
         self.other = Kid.objects.get(name="Paul")
 
-    def tap(self, kid, direction="add"):
-        return self.client.post(reverse("stars:tap", args=[kid.id]), {"direction": direction})
+    def tap(self, kid, direction="add", reason=""):
+        return self.client.post(
+            reverse("stars:tap", args=[kid.id]), {"direction": direction, "reason": reason}
+        )
 
     def test_page_shows_all_kids(self):
         resp = self.client.get(reverse("stars:quick_tap"))
@@ -53,6 +55,22 @@ class QuickTapTests(TestCase):
         StarTransaction.objects.create(kid=self.kid, delta=1, reason="Dinner on time")
         self.tap(self.kid)
         self.assertEqual(self.kid.transactions.count(), 2)
+
+    def test_same_reason_merges(self):
+        for _ in range(3):
+            self.tap(self.kid, reason="  cleaned room ")
+        txns = list(self.kid.transactions.all())
+        self.assertEqual([(t.delta, t.reason) for t in txns], [(3, "cleaned room")])
+
+    def test_changing_reason_starts_new_entry(self):
+        self.tap(self.kid, reason="cleaned room")
+        self.tap(self.kid, reason="cleaned room")
+        self.tap(self.kid, reason="fed the dog")
+        self.tap(self.kid)
+        self.assertEqual(
+            [(t.delta, t.reason) for t in self.kid.transactions.all()],
+            [(1, ""), (1, "fed the dog"), (2, "cleaned room")],
+        )
 
     def test_does_not_merge_after_window(self):
         self.tap(self.kid)

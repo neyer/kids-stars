@@ -5,6 +5,7 @@
 
 <div class="balance-banner" id="balance-banner"
      data-celebrate="{{ celebrate }}"
+     data-lost="{% if lost %}1{% endif %}"
      data-balance-before="{{ balance_before }}"
      data-balance-after="{{ kid.balance }}">
   <div class="big-balance" id="balance-big">
@@ -80,12 +81,19 @@
   var before = parseInt(banner.dataset.balanceBefore || "0", 10) || 0;
   var after = parseInt(banner.dataset.balanceAfter || "0", 10) || 0;
 
-  if (!celebrate) {
+  var lost = banner.dataset.lost === "1";
+
+  if ((celebrate || lost) && window.history && window.history.replaceState) {
+    window.history.replaceState(null, "", window.location.pathname);
+  }
+
+  if (lost) {
+    window.playBuzzer();
     return;
   }
 
-  if (window.history && window.history.replaceState) {
-    window.history.replaceState(null, "", window.location.pathname);
+  if (!celebrate) {
+    return;
   }
 
   animateCount(numberEl, before, after, 900);

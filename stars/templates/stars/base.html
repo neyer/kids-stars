@@ -279,36 +279,74 @@
   }
 </style>
 <script>
-/* Shared twinkle sound. One AudioContext is reused so rapid taps work. */
-window.playTwinkle = (function () {
+/* Shared sound effects. One AudioContext is reused so rapid taps work. */
+(function () {
   var ctx = null;
-  return function () {
+
+  function getCtx() {
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!ctx) ctx = new Ctx();
+    if (ctx.state === "suspended") ctx.resume();
+    return ctx;
+  }
+
+  // Plays one note. `dest` defaults to the speakers.
+  function tone(freq, startTime, dur, type, gainPeak, dest) {
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, startTime);
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(gainPeak, startTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
+    osc.connect(gain);
+    gain.connect(dest || ctx.destination);
+    osc.start(startTime);
+    osc.stop(startTime + dur);
+    return osc;
+  }
+
+  window.playTwinkle = function () {
     try {
-      var Ctx = window.AudioContext || window.webkitAudioContext;
-      if (!ctx) ctx = new Ctx();
-      if (ctx.state === "suspended") ctx.resume();
+      getCtx();
       var now = ctx.currentTime;
-
-      function tone(freq, startTime, dur, type, gainPeak) {
-        var osc = ctx.createOscillator();
-        var gain = ctx.createGain();
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, startTime);
-        gain.gain.setValueAtTime(0, startTime);
-        gain.gain.linearRampToValueAtTime(gainPeak, startTime + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(startTime);
-        osc.stop(startTime + dur);
-      }
-
       tone(1568, now, 0.09, "square", 0.15);
       tone(2093, now + 0.09, 0.18, "square", 0.15);
-
-      var sparkleNotes = [2093, 2637, 3136, 3520];
-      sparkleNotes.forEach(function (freq, i) {
+      [2093, 2637, 3136, 3520].forEach(function (freq, i) {
         tone(freq, now + 0.22 + i * 0.07, 0.15, "sine", 0.07);
+      });
+    } catch (e) {
+      /* Web Audio unavailable; skip sound. */
+    }
+  };
+
+  // A short game-show wrong-answer buzz: two slightly detuned square waves,
+  // lightly filtered to take the edge off. Buzzy but not grating.
+  window.playBuzzer = function () {
+    try {
+      getCtx();
+      var now = ctx.currentTime;
+      var dur = 0.3;
+
+      var out = ctx.createGain();
+      out.gain.setValueAtTime(0, now);
+      out.gain.linearRampToValueAtTime(0.18, now + 0.005);
+      out.gain.setValueAtTime(0.18, now + dur - 0.04);
+      out.gain.linearRampToValueAtTime(0, now + dur);
+
+      var filter = ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = 3500;
+      filter.connect(out);
+      out.connect(ctx.destination);
+
+      [150, 159].forEach(function (freq) {
+        var osc = ctx.createOscillator();
+        osc.type = "square";
+        osc.frequency.value = freq;
+        osc.connect(filter);
+        osc.start(now);
+        osc.stop(now + dur);
       });
     } catch (e) {
       /* Web Audio unavailable; skip sound. */

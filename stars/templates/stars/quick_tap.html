@@ -46,11 +46,29 @@
   .tap-btn:active { transform: scale(0.92); }
   .tap-btn.minus { background: var(--red); }
   .tap-btn.plus { background: var(--green); }
+  .tap-row.shake { animation: tap-shake 0.35s ease; }
+  @keyframes tap-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
   .tap-hint { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 1rem; }
+  .tap-reason {
+    display: block;
+    width: 100%;
+    padding: 0.6rem 0.7rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 1rem; /* 16px+ keeps iOS from zooming on focus */
+  }
   .tap-error { color: var(--red); text-align: center; min-height: 1.2em; }
 </style>
 
 <a class="back-link" href="{% url 'stars:kid_list' %}">&larr; All kids</a>
+<input type="text" id="tap-reason" class="tap-reason" maxlength="255"
+       placeholder="Reason (optional, applies to every kid)" aria-label="Reason">
 <div class="tap-error" id="tap-error"></div>
 
 <div class="tap-list">
@@ -68,12 +86,13 @@
   <p class="empty">No kids yet. Add some in the admin.</p>
   {% endfor %}
 </div>
-<p class="tap-hint">Taps within a minute of each other are saved as one entry.</p>
+<p class="tap-hint">Taps within a minute of each other with the same reason are saved as one entry.</p>
 
 <script>
 (function () {
   var csrf = "{{ csrf_token }}";
   var errorEl = document.getElementById("tap-error");
+  var reasonEl = document.getElementById("tap-reason");
   // Send taps one at a time so they reach the server in order.
   var queue = Promise.resolve();
   var pending = {}; // kid id -> taps not yet confirmed by the server
@@ -89,6 +108,7 @@
       btn.addEventListener("click", function () {
         var dir = btn.dataset.dir;
         var step = dir === "add" ? 1 : -1;
+        var reason = reasonEl.value.trim(); // capture now, not when sent
 
         // Optimistic update so the number moves instantly.
         pending[kid] += step;
@@ -99,10 +119,15 @@
           void starEl.offsetWidth; // restart animation
           starEl.classList.add("twinkle");
           burst(row);
+        } else {
+          window.playBuzzer();
+          row.classList.remove("shake");
+          void row.offsetWidth; // restart animation
+          row.classList.add("shake");
         }
 
         queue = queue.then(function () {
-          var body = new URLSearchParams({ direction: dir });
+          var body = new URLSearchParams({ direction: dir, reason: reason });
           return fetch(row.dataset.url, {
             method: "POST",
             headers: { "X-CSRFToken": csrf },

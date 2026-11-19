@@ -28,6 +28,8 @@ def kid_detail(request, kid_id):
     except ValueError:
         celebrate = 0
 
+    lost = "lost" in request.GET
+
     return render(
         request,
         "stars/kid_detail.html",
@@ -36,15 +38,18 @@ def kid_detail(request, kid_id):
             "transactions": transactions,
             "quick_actions": quick_actions,
             "celebrate": celebrate,
+            "lost": lost,
             "balance_before": kid.balance - celebrate,
         },
     )
 
 
-def _redirect_to_kid(kid, celebrate_delta=0):
+def _redirect_to_kid(kid, delta=0):
     url = reverse("stars:kid_detail", args=[kid.id])
-    if celebrate_delta > 0:
-        url = f"{url}?celebrate={celebrate_delta}"
+    if delta > 0:
+        url = f"{url}?celebrate={delta}"
+    elif delta < 0:
+        url = f"{url}?lost={-delta}"
     return redirect(url)
 
 
@@ -67,7 +72,7 @@ def add_stars(request, kid_id):
 
     delta = amount if direction == "add" else -amount
     StarTransaction.objects.create(kid=kid, delta=delta, reason=reason)
-    return _redirect_to_kid(kid, celebrate_delta=delta if delta > 0 else 0)
+    return _redirect_to_kid(kid, delta=delta)
 
 
 @login_required
@@ -76,7 +81,7 @@ def quick_action(request, kid_id, action_id):
     kid = get_object_or_404(Kid, pk=kid_id)
     action = get_object_or_404(QuickAction, pk=action_id)
     StarTransaction.objects.create(kid=kid, delta=action.delta, reason=action.label)
-    return _redirect_to_kid(kid, celebrate_delta=action.delta if action.delta > 0 else 0)
+    return _redirect_to_kid(kid, delta=action.delta)
 
 
 @login_required
@@ -102,9 +107,10 @@ def quick_tap(request):
 @require_POST
 def tap(request, kid_id):
     """Add or remove one star, merging into the kid's latest entry if that
-    entry is a blank-reason entry touched within TAP_CHUNK_WINDOW."""
+    entry has the same reason and was touched within TAP_CHUNK_WINDOW."""
     kid = get_object_or_404(Kid, pk=kid_id)
     step = 1 if request.POST.get("direction", "add") == "add" else -1
+    reason = request.POST.get("reason", "").strip()[:255]
 
     with transaction.atomic():
         latest = (
@@ -116,7 +122,7 @@ def tap(request, kid_id):
         cutoff = timezone.now() - TAP_CHUNK_WINDOW
         if (
             latest is not None
-            and latest.reason == ""
+            and latest.reason == reason
             and (latest.updated_at or latest.created_at) >= cutoff
         ):
             latest.delta += step
@@ -128,7 +134,7 @@ def tap(request, kid_id):
                 latest.save(update_fields=["delta", "updated_at"])
                 chunk = latest.delta
         else:
-            StarTransaction.objects.create(kid=kid, delta=step, reason="")
+            StarTransaction.objects.create(kid=kid, delta=step, reason=reason)
             chunk = step
 
     return JsonResponse({"kid": kid.id, "balance": kid.balance, "chunk": chunk})
