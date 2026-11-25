@@ -13,9 +13,32 @@
     <span id="balance-number">{{ kid.balance }}</span>
   </div>
   <div>{{ kid.name }}'s stars</div>
+  {% with pending=kid.pending_stars %}{% if pending %}
+  <div class="pending">+{{ pending }} waiting for approval</div>
+  {% endif %}{% endwith %}
 </div>
 
-{% if user.is_authenticated %}
+{% if is_parent %}
+{% if kid_requests %}
+<h3>Waiting for approval</h3>
+<ul class="request-list">
+  {% for req in kid_requests %}
+  <li>
+    <span class="delta">+{{ req.delta }}</span>
+    <span class="meta">{{ req.reason }}<span class="timestamp">{{ req.created_at|date:"M j, g:i A" }}</span></span>
+    <form action="{% url 'stars:approve_request' req.id %}" method="post">
+      {% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">
+      <button type="submit" class="btn small approve">Approve</button>
+    </form>
+    <form action="{% url 'stars:deny_request' req.id %}" method="post">
+      {% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">
+      <button type="submit" class="btn small deny">Deny</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+
 {% if quick_actions %}
 <div class="quick-actions">
   {% for action in quick_actions %}
@@ -41,7 +64,44 @@
     <button type="submit" class="btn">Save</button>
   </div>
 </form>
-{% else %}
+{% elif is_own_page %}
+<h3>Ask for stars</h3>
+{% if request_actions %}
+<div class="quick-actions">
+  {% for action in request_actions %}
+  <form action="{% url 'stars:request_stars' kid.id %}" method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="{{ action.id }}">
+    <button type="submit" class="quick-btn pos">+{{ action.delta }} {{ action.label }}</button>
+  </form>
+  {% endfor %}
+</div>
+{% endif %}
+<form class="manual-form" action="{% url 'stars:request_stars' kid.id %}" method="post">
+  {% csrf_token %}
+  <div class="row">
+    <input type="number" name="amount" min="1" max="{{ max_request_stars }}" step="1" value="1" required>
+    <input type="text" name="reason" maxlength="255" placeholder="What did you do?" required>
+    <button type="submit" class="btn">Ask</button>
+  </div>
+</form>
+
+{% if kid_requests %}
+<h3>Waiting for a parent</h3>
+<ul class="request-list">
+  {% for req in kid_requests %}
+  <li>
+    <span class="delta">+{{ req.delta }}</span>
+    <span class="meta">{{ req.reason }}<span class="timestamp">{{ req.created_at|date:"M j, g:i A" }}</span></span>
+    <form action="{% url 'stars:cancel_request' req.id %}" method="post">
+      {% csrf_token %}
+      <button type="submit" class="link-btn">Cancel</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% elif not user.is_authenticated %}
 <p class="empty"><a href="{% url 'stars:login' %}?next={{ request.path }}">Log in</a> to add or remove stars.</p>
 {% endif %}
 
@@ -57,7 +117,7 @@
       <span class="reason">{{ txn.reason|default:"—" }}</span>
       <span class="timestamp">{{ txn.created_at|date:"M j, Y g:i A" }}</span>
     </span>
-    {% if user.is_authenticated %}
+    {% if is_parent %}
     <form action="{% url 'stars:delete_transaction' kid.id txn.id %}" method="post"
           onsubmit="return confirm('Delete this entry?');">
       {% csrf_token %}

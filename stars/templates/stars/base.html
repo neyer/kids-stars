@@ -267,6 +267,46 @@
     gap: 0.5rem;
   }
   .auth-bar a { text-decoration: underline; }
+  .badge {
+    display: inline-block;
+    background: var(--red);
+    color: white;
+    border-radius: 999px;
+    padding: 0 0.45rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .pending {
+    display: block;
+    color: var(--green);
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 0.2rem;
+  }
+  .messages li.success { background: #e2f4e6; color: var(--green); }
+  .request-list { list-style: none; margin: 0 0 1.5rem; padding: 0; }
+  .request-list li {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.7rem 1rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+  .request-list .delta { font-weight: 700; color: var(--green); min-width: 2.5rem; }
+  .request-list .meta { flex: 1; min-width: 140px; }
+  .request-list .meta .timestamp { display: block; font-size: 0.8rem; color: var(--muted); }
+  .request-list form { margin: 0; }
+  .request-list .status { font-size: 0.85rem; font-weight: 600; }
+  .request-list .status.approved { color: var(--green); }
+  .request-list .status.denied { color: var(--red); }
+  .btn.approve { background: var(--green); }
+  .btn.deny { background: var(--red); }
+  .btn.small { padding: 0.35rem 0.7rem; font-size: 0.9rem; }
   .auth-bar form { margin: 0; }
   .link-btn {
     background: none;
@@ -360,8 +400,15 @@
   <h1><a href="{% url 'stars:kid_list' %}">⭐ Star Tracker</a></h1>
   <div class="auth-bar">
     {% if user.is_authenticated %}
+      {% if is_parent %}
       <a href="{% url 'stars:quick_tap' %}">Quick tap</a>
       <span>·</span>
+      <a href="{% url 'stars:request_list' %}">Requests{% if pending_request_count %} <span class="badge">{{ pending_request_count }}</span>{% endif %}</a>
+      <span>·</span>
+      {% elif own_kid %}
+      <a href="{{ own_kid.get_absolute_url }}">My stars</a>
+      <span>·</span>
+      {% endif %}
       <span>{{ user.username }}</span>
       <form action="{% url 'stars:logout' %}" method="post">
         {% csrf_token %}
@@ -376,7 +423,7 @@
   {% if messages %}
   <ul class="messages">
     {% for message in messages %}
-      <li>{{ message }}</li>
+      <li class="{{ message.tags }}">{{ message }}</li>
     {% endfor %}
   </ul>
   {% endif %}

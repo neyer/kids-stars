@@ -78,6 +78,7 @@
     <div class="who">
       <a class="name" href="{% url 'stars:kid_detail' kid.id %}">{{ kid.name }}</a>
       <span class="balance"><span class="star">⭐</span> <span class="num">{{ kid.balance }}</span></span>
+      {% with pending=kid.pending_stars %}{% if pending %}<span class="pending">+{{ pending }} pending</span>{% endif %}{% endwith %}
       <span class="chunk"></span>
     </div>
     <button type="button" class="tap-btn plus" data-dir="add" aria-label="Add a star to {{ kid.name }}">+</button>

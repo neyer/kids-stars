@@ -1,0 +1,46 @@
+{% extends "stars/base.html" %}
+{% block title %}Requests · Star Tracker{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'stars:kid_list' %}">&larr; All kids</a>
+
+<h3>Waiting for approval</h3>
+{% if pending %}
+<ul class="request-list">
+  {% for req in pending %}
+  <li>
+    <span class="delta">+{{ req.delta }}</span>
+    <span class="meta">
+      <strong>{{ req.kid.name }}</strong>: {{ req.reason }}
+      <span class="timestamp">{{ req.created_at|date:"M j, g:i A" }}</span>
+    </span>
+    <form action="{% url 'stars:approve_request' req.id %}" method="post">
+      {% csrf_token %}
+      <button type="submit" class="btn small approve">Approve</button>
+    </form>
+    <form action="{% url 'stars:deny_request' req.id %}" method="post">
+      {% csrf_token %}
+      <button type="submit" class="btn small deny">Deny</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="empty">No requests right now.</p>
+{% endif %}
+
+{% if recent %}
+<h3>Recently decided</h3>
+<ul class="request-list">
+  {% for req in recent %}
+  <li>
+    <span class="delta">+{{ req.delta }}</span>
+    <span class="meta">
+      <strong>{{ req.kid.name }}</strong>: {{ req.reason }}
+      <span class="timestamp">{{ req.decided_at|date:"M j, g:i A" }}{% if req.decided_by %} by {{ req.decided_by.username }}{% endif %}</span>
+    </span>
+    <span class="status {{ req.status }}">{{ req.get_status_display }}</span>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

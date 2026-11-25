@@ -7,6 +7,9 @@
     <span class="star">⭐</span>
     <span class="name">{{ kid.name }}</span>
     <span class="balance">{{ kid.balance }} star{{ kid.balance|pluralize }}</span>
+    {% with pending=kid.pending_stars %}{% if pending %}
+    <span class="pending">+{{ pending }} pending</span>
+    {% endif %}{% endwith %}
   </a>
   {% empty %}
   <p class="empty">No kids yet. Add some in the admin.</p>
